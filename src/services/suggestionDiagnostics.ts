@@ -7,11 +7,7 @@ namespace ts {
         const diags: DiagnosticWithLocation[] = [];
         const checker = program.getTypeChecker();
 
-        if (sourceFile.commonJsModuleIndicator &&
-            (programContainsEs6Modules(program) || compilerOptionsIndicateEs6Modules(program.getCompilerOptions())) &&
-            containsTopLevelCommonjs(sourceFile)) {
-            diags.push(createDiagnosticForNode(getErrorNodeFromCommonJsIndicator(sourceFile.commonJsModuleIndicator), Diagnostics.File_is_a_CommonJS_module_it_may_be_converted_to_an_ES6_module));
-        }
+
 
         const isJsFile = isSourceFileJS(sourceFile);
 
@@ -79,28 +75,8 @@ namespace ts {
         }
     }
 
-    // convertToEs6Module only works on top-level, so don't trigger it if commonjs code only appears in nested scopes.
-    function containsTopLevelCommonjs(sourceFile: SourceFile): boolean {
-        return sourceFile.statements.some(statement => {
-            switch (statement.kind) {
-                case SyntaxKind.VariableStatement:
-                    return (statement as VariableStatement).declarationList.declarations.some(decl =>
-                        !!decl.initializer && isRequireCall(propertyAccessLeftHandSide(decl.initializer), /*checkArgumentIsStringLiteralLike*/ true));
-                case SyntaxKind.ExpressionStatement: {
-                    const { expression } = statement as ExpressionStatement;
-                    if (!isBinaryExpression(expression)) return isRequireCall(expression, /*checkArgumentIsStringLiteralLike*/ true);
-                    const kind = getAssignmentDeclarationKind(expression);
-                    return kind === AssignmentDeclarationKind.ExportsProperty || kind === AssignmentDeclarationKind.ModuleExports;
-                }
-                default:
-                    return false;
-            }
-        });
-    }
 
-    function propertyAccessLeftHandSide(node: Expression): Expression {
-        return isPropertyAccessExpression(node) ? propertyAccessLeftHandSide(node.expression) : node;
-    }
+
 
     function importNameForConvertToDefaultImport(node: AnyValidImportOrReExport): Identifier | undefined {
         switch (node.kind) {
@@ -140,9 +116,6 @@ namespace ts {
         return !!returnType && !!checker.getPromisedTypeOfPromise(returnType);
     }
 
-    function getErrorNodeFromCommonJsIndicator(commonJsModuleIndicator: Node): Node {
-        return isBinaryExpression(commonJsModuleIndicator) ? commonJsModuleIndicator.left : commonJsModuleIndicator;
-    }
 
     function hasReturnStatementWithPromiseHandler(body: Block): boolean {
         return !!forEachReturnStatement(body, isReturnStatementWithFixablePromiseHandler);
